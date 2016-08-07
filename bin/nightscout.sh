@@ -78,12 +78,12 @@ Format potential entries (glucose values) for Nightscout.
 
     openaps use ns shell format-recent-type tz entries monitor/glucose.json  | json -a dateString | wc -l
     # Add it as a report
-    openaps report add nightscout/recent-missing-entries.json JSON ns shell format-recent-type tz entries monitor/glucose.json  
+    openaps report add nightscout/recent-missing-entries.json JSON ns shell format-recent-type tz entries monitor/glucose.json
     # fetch data for first time
     openaps report invoke nightscout/recent-missing-entries.json
 
     # add report for uploading to NS
-    openaps report add nightscout/uploaded-entries.json JSON  ns shell upload entries.json nightscout/recent-missing-entries.json 
+    openaps report add nightscout/uploaded-entries.json JSON  ns shell upload entries.json nightscout/recent-missing-entries.json
     # upload for fist time.
     openaps report invoke nightscout/uploaded-entries.json
 EOF
@@ -206,7 +206,7 @@ ns)
       test ! -e ${FILE} && echo "Third argument, contents to upload, FILE, does not exist" && exit 1
       test ! -r ${FILE} && echo "Third argument, contents to upload, FILE, not readable." && exit 1
       openaps use ns shell lsgaps ${ZONE} ${TYPE} \
-        |  openaps use ${ZONE} select --current now --gaps - ${FILE}  | json
+        |  openaps use ${ZONE} select --date dateString --current now --gaps - ${FILE}  | json
     ;;
     latest-entries-time)
       PREVIOUS_TIME=$(ns-get host $NIGHTSCOUT_HOST entries.json 'find[type]=sgv'  | json 0)
