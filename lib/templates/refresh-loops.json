@@ -34,8 +34,8 @@
       "no_raw": "False",
       "reporter": "JSON",
       "seconds": "",
-      "minutes": "30.0",
-      "hours": "",
+      "minutes": "",
+      "hours": "25",
       "device": "cgm",
       "gaps": "",
       "microseconds": "",
@@ -172,7 +172,7 @@
       "use": "rezone",
       "reporter": "JSON",
       "astimezone": "False",
-      "date": "['timestamp', 'dateString', 'start_at', 'end_at', 'created_at']",
+      "date": "timestamp dateString start_at end_at created_at",
       "adjust": "missing",
       "input": "monitor/pumphistory.json",
       "device": "tz",
@@ -188,7 +188,7 @@
       "use": "rezone",
       "reporter": "JSON",
       "astimezone": "False",
-      "date": "['timestamp', 'dateString', 'start_at', 'end_at', 'created_at']",
+      "date": "timestamp dateString start_at end_at created_at",
       "adjust": "missing",
       "input": "settings/pumphistory-24h.json",
       "device": "tz",
@@ -566,7 +566,7 @@
   },
   {
     "get-bg": {
-      "command": "! bash -c \"openaps monitor-cgm 2>/dev/null | tail -1; grep -q glucose cgm/cgm-glucose.json && jq -s \\\".[0] + .[1]|unique|sort_by(.dateString)|reverse\\\" cgm/cgm-glucose.json cgm/cgm-glucose-long.json > cgm/cgm-glucose-long.json.new && mv cgm/cgm-glucose-long.json.new cgm/cgm-glucose-long.json; rsync -rtu cgm/glucose-long.json monitor/glucose.json\""
+      "command": "! bash -c \"openaps monitor-cgm 2>/dev/null | tail -1 && grep -q glucose cgm/cgm-glucose.json && rsync -rtu cgm/cgm-glucose.json cgm/glucose.json; rsync -rtu cgm/glucose.json monitor/glucose.json\""
     },
     "type": "alias",
     "name": "get-bg"
@@ -588,7 +588,7 @@
   {
     "type": "alias",
     "autosens": {
-      "command": "! bash -c \"(find settings/ -newer settings/autosens.json | grep -q pumphistory-24h-zoned.json || find settings/ -size -5c | grep -q autosens.json) && openaps invoke settings/autosens.json\""
+      "command": "! bash -c \"(find settings/ -newer settings/autosens.json | grep -q pumphistory-24h-zoned.json || find settings/ -size -5c | grep -q autosens.json || ! find settings/ | grep -q autosens) && openaps invoke settings/autosens.json\""
     },
     "name": "autosens"
   },
@@ -664,7 +664,7 @@
   },
   {
     "pump-loop": {
-      "command": "! bash -c \"sleep $[ ( $RANDOM / 2048 ) ]s; until(echo Starting pump-loop at `date`: && openaps wait-for-silence && openaps refresh-old-pumphistory && openaps refresh-old-pumphistory-24h && openaps refresh-old-profile && openaps refresh-temp-and-enact && openaps refresh-pumphistory-and-enact && openaps merge-pumphistory-long && openaps refresh-profile && openaps refresh-pumphistory-24h && echo Completed pump-loop at `date` && echo); do echo Error, retrying && [[ $RANDOM > 30000 ]] && openaps wait-for-long-silence && openaps mmtune; sleep 5; done\""
+      "command": "! bash -c \"sleep $[ ( $RANDOM / 2048 ) ]s; until(echo Starting pump-loop at `date`: && openaps wait-for-silence && openaps refresh-old-pumphistory && openaps refresh-old-pumphistory-24h && openaps refresh-old-profile && openaps refresh-temp-and-enact && openaps refresh-pumphistory-and-enact && openaps refresh-profile && openaps refresh-pumphistory-24h && echo Completed pump-loop at `date` && echo); do echo Error, retrying && [[ $RANDOM > 30000 ]] && openaps wait-for-long-silence && openaps mmtune; sleep 5; done\""
     },
     "type": "alias",
     "name": "pump-loop"
