@@ -19,39 +19,154 @@ die() {
   exit 1
 }
 
-if [[ $# -lt 2 ]]; then
-    #openaps device show pump 2>/dev/null >/dev/null || die "Usage: setup.sh <directory> <pump serial #> [max_iob] [Share serial #]
-    openaps device show pump 2>/dev/null >/dev/null || die "Usage: setup.sh <directory> <pump serial #> [/dev/ttySOMETHING] [max_iob]"
+# defaults
+max_iob=0
+CGM="G4"
+DIR=""
+directory=""
+EXTRAS=""
+
+for i in "$@"
+do
+case $i in
+    -d=*|--dir=*)
+    DIR="${i#*=}"
+    # ~/ paths have to be expanded manually
+    DIR="${DIR/#\~/$HOME}"
+    directory="$(readlink -m $DIR)"
+    shift # past argument=value
+    ;;
+    -s=*|--serial=*)
+    serial="${i#*=}"
+    shift # past argument=value
+    ;;
+    -t=*|--tty=*)
+    ttyport="${i#*=}"
+    shift # past argument=value
+    ;;
+    -m=*|--max_iob=*)
+    max_iob="${i#*=}"
+    shift # past argument=value
+    ;;
+    -c=*|--cgm=*)
+    CGM="${i#*=}"
+    shift # past argument=value
+    ;;
+    -n=*|--ns-host=*)
+    NIGHTSCOUT_HOST="${i#*=}"
+    shift # past argument=value
+    ;;
+    -a=*|--api-secret=*)
+    API_SECRET="${i#*=}"
+    shift # past argument=value
+    ;;
+    -e=*|--enable=*)
+    ENABLE="${i#*=}"
+    shift # past argument=value
+    ;;
+    -c=*|--cgm=*)
+    CGM="${i#*=}"
+    shift # past argument=value
+    ;;
+    *)
+            # unknown option
+    echo "Option ${i#*=} unknown"
+    ;;
+esac
+done
+
+if ! [[ ${CGM,,} =~ "g4" || ${CGM,,} =~ "g5" ]]; then
+    echo "Unsupported CGM.  Please select (Dexcom) G4 (default) or G5."
+    echo "If you'd like to help add Medtronic CGM support, please contact @scottleibrand on Gitter"
+    echo
+    DIR="" # to force a Usage prompt
 fi
-directory=`mkdir -p $1; cd $1; pwd`
-serial=$2
-
-ttyport=$3
-
-if [[ $# -lt 4 ]]; then
-    max_iob=0
-else
-    max_iob=$4
+if ! ( git config -l | grep -q user.email ) ; then
+    read -p "What email address would you like to use for git commits? " -r
+    EMAIL=$REPLY
+    git config --global user.email $EMAIL
+fi
+if ! ( git config -l | grep -q user.name ); then
+    read -p "What full name would you like to use for git commits? " -r
+    NAME=$REPLY
+    git config --global user.name $NAME
+fi
+if [[ -z "$DIR" || -z "$serial" ]]; then
+    echo "Usage: oref0-setup.sh <--dir=directory> <--serial=pump_serial_#> [--tty=/dev/ttySOMETHING] [--max_iob=0] [--ns-host=https://mynightscout.azurewebsites.net] [--api-secret=myplaintextsecret] [--cgm=(G4|G5)] [--enable='autosens meal']"
+    read -p "Start interactive setup? [Y]/n " -r
+    if [[ $REPLY =~ ^[Nn]$ ]]; then
+        exit
+    fi
+    read -p "What would you like to call your loop directory? [myopenaps] " -r
+    DIR=$REPLY
+    if [[ -z $DIR ]]; then DIR="myopenaps"; fi
+    echo "Ok, $DIR it is."
+    directory="$(readlink -m $DIR)"
+    read -p "What is your pump serial number? " -r
+    serial=$REPLY
+    echo "Ok, $serial it is."
+    read -p "Are you using mmeowlink? If not, press enter. If so, what TTY port (i.e. /dev/ttySOMETHING)? " -r
+    ttyport=$REPLY
+    echo -n "Ok, "
+    if [[ -z "$ttyport" ]]; then
+        echo -n Carelink
+    else
+        echo -n TTY $ttyport
+    fi
+    echo " it is."
+    echo Are you using Nightscout? If not, press enter.
+    read -p "If so, what is your Nightscout host? (i.e. https://mynightscout.azurewebsites.net)? " -r
+    NIGHTSCOUT_HOST=$REPLY
+    if [[ -z "$ttyport" ]]; then
+        echo Ok, no Nightscout for you.
+    else
+        echo "Ok, $NIGHTSCOUT_HOST it is."
+    fi
+    if [[ ! -z $NIGHTSCOUT_HOST ]]; then
+        read -p "And what is your Nightscout api secret (i.e. myplaintextsecret)? " -r
+        API_SECRET=$REPLY
+        echo "Ok, $API_SECRET it is."
+    fi
+    read -p "Do you need any advanced features? y/[N] " -r
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        read -p "Enable automatic sensitivity adjustment? y/[N] " -r
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            ENABLE+=" autosens "
+        fi
+        read -p "Enable advanced meal assist? y/[N] " -r
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            ENABLE+=" meal "
+        fi
+    fi
 fi
 
 #if [[ $# -gt 3 ]]; then
     #share_serial=$4
 #fi
 
-echo -n "Setting up oref0 in $directory for pump $serial with "
-if [[ $# -lt 3 ]]; then
+echo "Setting up oref0 in $directory for pump $serial with Dexcom $CGM,"
+echo -n "NS host $NIGHTSCOUT_HOST, "
+if [[ -z "$ttyport" ]]; then
     echo -n Carelink
 else
     echo -n TTY $ttyport
 fi
-if [[ $# -ge 4 ]]; then echo -n " and max_iob $max_iob"; fi
+if [[ "$max_iob" -ne 0 ]]; then echo -n ", max_iob $max_iob"; fi
+if [[ ! -z "$ENABLE" ]]; then echo -n ", advanced features $ENABLE"; fi
 echo
 
-read -p "Continue? " -n 1 -r
-echo
+read -p "Continue? y/[N] " -r
 if [[ $REPLY =~ ^[Yy]$ ]]; then
 
-( ( cd $directory 2>/dev/null && git status ) || ( openaps init $directory ) ) || die "Can't init $directory"
+echo -n "Checking $directory: "
+mkdir -p $directory
+if ( cd $directory && git status 2>/dev/null >/dev/null && openaps use -h >/dev/null && echo true ); then
+    echo $directory already exists
+elif openaps init $directory; then
+    echo $directory initialized
+else
+    die "Can't init $directory"
+fi
 cd $directory || die "Can't cd $directory"
 ls monitor 2>/dev/null >/dev/null || mkdir monitor || die "Can't mkdir monitor"
 ls raw-cgm 2>/dev/null >/dev/null || mkdir raw-cgm || die "Can't mkdir raw-cgm"
@@ -60,53 +175,132 @@ ls settings 2>/dev/null >/dev/null || mkdir settings || die "Can't mkdir setting
 ls enact 2>/dev/null >/dev/null || mkdir enact || die "Can't mkdir enact"
 ls upload 2>/dev/null >/dev/null || mkdir upload || die "Can't mkdir upload"
 
-if [[ $# -lt 4 ]]; then
-    oref0-get-profile --exportDefaults > preferences.json
+mkdir -p $HOME/src/
+if [ -d "$HOME/src/oref0/" ]; then
+    echo "$HOME/src/oref0/ already exists; pulling latest"
+    (cd ~/src/oref0 && git fetch && git pull) || die "Couldn't pull latest oref0"
 else
-    echo "{ \"max_iob\": $max_iob }" > max_iob.json && oref0-get-profile --updatePreferences max_iob.json > preferences.json && rm max_iob.json
+    echo -n "Cloning oref0 dev: "
+    (cd ~/src && git clone -b dev git://github.com/openaps/oref0.git) || die "Couldn't clone oref0 dev"
+fi
+echo Checking oref0 installation
+oref0-get-profile --exportDefaults 2>/dev/null >/dev/null || (echo Installing latest oref0 dev && cd $HOME/src/oref0/ && npm run global-install)
+
+echo Checking mmeowlink installation
+if openaps vendor add --path . mmeowlink.vendors.mmeowlink 2>&1 | grep "No module"; then
+    if [ -d "$HOME/src/mmeowlink/" ]; then
+        echo "$HOME/src/mmeowlink/ already exists; pulling latest dev branch"
+        (cd ~/src/mmeowlink && git fetch && git checkout dev && git pull) || die "Couldn't pull latest mmeowlink dev"
+    else
+        echo -n "Cloning mmeowlink dev: "
+        (cd ~/src && git clone -b dev git://github.com/oskarpearson/mmeowlink.git) || die "Couldn't clone mmeowlink dev"
+    fi
+    echo Installing latest mmeowlink dev && cd $HOME/src/mmeowlink/ && sudo pip install -e . || die "Couldn't install mmeowlink"
+fi
+
+cd $directory
+if [[ "$max_iob" -eq 0 ]]; then
+    oref0-get-profile --exportDefaults > preferences.json || die "Could not run oref0-get-profile"
+else
+    echo "{ \"max_iob\": $max_iob }" > max_iob.json && oref0-get-profile --updatePreferences max_iob.json > preferences.json && rm max_iob.json || die "Could not run oref0-get-profile"
 fi
 
 cat preferences.json
 git add preferences.json
 
-sudo cp ~/src/oref0/logrotate.openaps /etc/logrotate.d/openaps
-sudo cp ~/src/oref0/logrotate.rsyslog /etc/logrotate.d/rsyslog
+# enable log rotation
+sudo cp $HOME/src/oref0/logrotate.openaps /etc/logrotate.d/openaps || die "Could not cp /etc/logrotate.d/openaps"
+sudo cp $HOME/src/oref0/logrotate.rsyslog /etc/logrotate.d/rsyslog || die "Could not cp /etc/logrotate.d/rsyslog"
 
-test -d /var/log/openaps || sudo mkdir /var/log/openaps && sudo chown $USER /var/log/openaps
+test -d /var/log/openaps || sudo mkdir /var/log/openaps && sudo chown $USER /var/log/openaps || die "Could not create /var/log/openaps"
 
-#openaps vendor add openapscontrib.timezones
-#openaps vendor add mmeowlink.vendors.mmeowlink
-
-#openaps vendor add openxshareble
+# configure ns
+if [[ ! -z "$NIGHTSCOUT_HOST" && ! -z "$API_SECRET" ]]; then
+    echo "Removing any existing ns device: "
+    killall -g openaps 2>/dev/null; openaps device remove ns 2>/dev/null
+    echo "Running nightscout autoconfigure-device-crud $NIGHTSCOUT_HOST $API_SECRET"
+    nightscout autoconfigure-device-crud $NIGHTSCOUT_HOST $API_SECRET || die "Could not run nightscout autoconfigure-device-crud"
+fi
 
 # import template
-cat ~/src/oref0/lib/templates/refresh-loops.json | openaps import
+for type in vendor device report alias; do
+    echo importing $type file
+    cat $HOME/src/oref0/lib/oref0-setup/$type.json | openaps import || die "Could not import $type.json"
+done
 
-# don't re-create devices if they already exist
-openaps device show 2>/dev/null > /tmp/openaps-devices
-
-# add devices
+# add/configure devices
+if [[ ${CGM,,} =~ "g5" ]]; then
+    openaps use cgm config --G5
+fi
 grep -q pump.ini .gitignore 2>/dev/null || echo pump.ini >> .gitignore
 git add .gitignore
-if [[ $# -lt 3 ]]; then
-    grep pump /tmp/openaps-devices || openaps device add pump medtronic $serial || die "Can't add pump"
+echo "Removing any existing pump device:"
+killall -g openaps 2>/dev/null; openaps device remove pump 2>/dev/null
+
+if [[ "$ttyport" =~ "spi" ]]; then
+    echo Checking spi_serial installation
+    if ! python -c "import spi_serial" 2>/dev/null; then
+        if [ -d "$HOME/src/915MHzEdisonExplorer_SW/" ]; then
+            echo "$HOME/src/915MHzEdisonExplorer_SW/ already exists; pulling latest master branch"
+            (cd ~/src/915MHzEdisonExplorer_SW && git fetch && git checkout master && git pull) || die "Couldn't pull latest 915MHzEdisonExplorer_SW master"
+        else
+            echo -n "Cloning 915MHzEdisonExplorer_SW master: "
+            (cd ~/src && git clone -b master https://github.com/EnhancedRadioDevices/915MHzEdisonExplorer_SW.git) || die "Couldn't clone 915MHzEdisonExplorer_SW master"
+        fi
+        echo Installing spi_serial && cd $HOME/src/915MHzEdisonExplorer_SW/spi_serial && sudo pip install -e . || die "Couldn't install spi_serial"
+    fi
+
+    echo Checking mraa installation
+    if ! ldconfig -p | grep -q mraa; then
+        echo Installing swig etc.
+        sudo apt-get install -y libpcre3-dev git cmake python-dev swig || die "Could not install swig etc."
+
+        if [ -d "$HOME/src/mraa/" ]; then
+            echo "$HOME/src/mraa/ already exists; pulling latest master branch"
+            (cd ~/src/mraa && git fetch && git checkout master && git pull) || die "Couldn't pull latest mraa master"
+        else
+            echo -n "Cloning mraa master: "
+            (cd ~/src && git clone -b master https://github.com/intel-iot-devkit/mraa.git) || die "Couldn't clone mraa master"
+        fi
+        ( cd $HOME/src/ && mkdir -p mraa/build && cd $_ && cmake .. -DBUILDSWIGNODE=OFF && \
+        make && sudo make install ) || die "Could not compile mraa"
+        sudo bash -c "grep -q i386-linux-gnu /etc/ld.so.conf || echo /usr/local/lib/i386-linux-gnu/ >> /etc/ld.so.conf && ldconfig" || die "Could not update /etc/ld.so.conf"
+    fi
+
+fi
+
+if [[ -z "$ttyport" ]]; then
+    openaps device add pump medtronic $serial || die "Can't add pump"
     # carelinks can't listen for silence or mmtune, so just do a preflight check instead
     openaps alias add wait-for-silence 'report invoke monitor/temp_basal.json'
     openaps alias add wait-for-long-silence 'report invoke monitor/temp_basal.json'
     openaps alias add mmtune 'report invoke monitor/temp_basal.json'
 else
-    grep pump /tmp/openaps-devices || openaps device add pump mmeowlink subg_rfspy $ttyport $serial || die "Can't add pump"
-    openaps alias add wait-for-silence '! bash -c "echo -n \"Listening: \"; for i in `seq 1 100`; do echo -n .; ~/src/mmeowlink/bin/mmeowlink-any-pump-comms.py --port '$ttyport' --wait-for 30 2>/dev/null | egrep -v subg | egrep No && break; done"'
-    openaps alias add wait-for-long-silence '! bash -c "echo -n \"Listening: \"; for i in `seq 1 100`; do echo -n .; ~/src/mmeowlink/bin/mmeowlink-any-pump-comms.py --port '$ttyport' --wait-for 45 2>/dev/null | egrep -v subg | egrep No && break; done"'
+    openaps device add pump mmeowlink subg_rfspy $ttyport $serial || die "Can't add pump"
+    openaps alias add wait-for-silence '! bash -c "echo -n \"Listening: \"; for i in `seq 1 100`; do echo -n .; mmeowlink-any-pump-comms.py --port '$ttyport' --wait-for 30 2>/dev/null | egrep -v subg | egrep No && break; done"'
+    openaps alias add wait-for-long-silence '! bash -c "echo -n \"Listening: \"; for i in `seq 1 200`; do echo -n .; mmeowlink-any-pump-comms.py --port '$ttyport' --wait-for 45 2>/dev/null | egrep -v subg | egrep No && break; done"'
 fi
 
+# configure optional features
+if [[ $ENABLE =~ autosens && $ENABLE =~ meal ]]; then
+    EXTRAS="settings/autosens.json monitor/meal.json"
+elif [[ $ENABLE =~ autosens ]]; then
+    EXTRAS="settings/autosens.json"
+elif [[ $ENABLE =~ meal ]]; then
+    EXTRAS='"" monitor/meal.json'
+fi
 
-read -p "Schedule openaps in cron? " -n 1 -r
-echo
+echo Running: openaps report add enact/suggested.json text determine-basal shell monitor/iob.json monitor/temp_basal.json monitor/glucose.json settings/profile.json $EXTRAS
+openaps report add enact/suggested.json text determine-basal shell monitor/iob.json monitor/temp_basal.json monitor/glucose.json settings/profile.json $EXTRAS
+
+read -p "Schedule openaps in cron? y/[N] " -r
 if [[ $REPLY =~ ^[Yy]$ ]]; then
 # add crontab entries
-(crontab -l; crontab -l | grep -q PATH || echo 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin') | crontab -
-(crontab -l; crontab -l | grep -q killall || echo '* * * * * killall -g --older-than 10m openaps') | crontab -
+(crontab -l; crontab -l | grep -q $NIGHTSCOUT_HOST || echo NIGHTSCOUT_HOST=$NIGHTSCOUT_HOST) | crontab -
+(crontab -l; crontab -l | grep -q "API_SECRET=" || echo API_SECRET=`nightscout hash-api-secret $API_SECRET`) | crontab -
+(crontab -l; crontab -l | grep -q PATH || echo "PATH=$PATH" ) | crontab -
+(crontab -l; crontab -l | grep -q wpa_cli || echo '* * * * * sudo wpa_cli scan') | crontab -
+(crontab -l; crontab -l | grep -q "killall -g --older-than 10m openaps" || echo '* * * * * killall -g --older-than 10m openaps') | crontab -
 (crontab -l; crontab -l | grep -q "reset-git" || echo "* * * * * cd $directory && oref0-reset-git") | crontab -
 (crontab -l; crontab -l | grep -q get-bg || echo "* * * * * cd $directory && ps aux | grep -v grep | grep -q 'openaps get-bg' || ( date; openaps get-bg ; cat cgm/glucose.json | json -a sgv dateString | head -1 ) | tee -a /var/log/openaps/cgm-loop.log") | crontab -
 (crontab -l; crontab -l | grep -q ns-loop || echo "* * * * * cd $directory && ps aux | grep -v grep | grep -q 'openaps ns-loop' || openaps ns-loop | tee -a /var/log/openaps/ns-loop.log") | crontab -
