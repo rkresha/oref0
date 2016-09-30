@@ -20,7 +20,7 @@ die() {
 }
 
 # defaults
-max_iob=0
+max_iob=4
 CGM="G4"
 DIR=""
 directory=""
@@ -93,6 +93,7 @@ if [[ -z "$DIR" || -z "$serial" ]]; then
     if [[ $REPLY =~ ^[Nn]$ ]]; then
         exit
     fi
+    cd ${HOME}
     read -p "What would you like to call your loop directory? [myopenaps] " -r
     DIR=$REPLY
     if [[ -z $DIR ]]; then DIR="myopenaps"; fi
@@ -180,7 +181,7 @@ if [ -d "$HOME/src/oref0/" ]; then
     (cd ~/src/oref0 && git fetch && git pull) || die "Couldn't pull latest oref0"
 else
     echo -n "Cloning oref0 dev: "
-    (cd ~/src && git clone -b dev git://github.com/openaps/oref0.git) || die "Couldn't clone oref0 dev"
+    (cd ~/src && git clone -b dev_testing git://github.com/rkresha/oref0.git) || die "Couldn't clone oref0 dev"
 fi
 echo Checking oref0 installation
 oref0-get-profile --exportDefaults 2>/dev/null >/dev/null || (echo Installing latest oref0 dev && cd $HOME/src/oref0/ && npm run global-install)
@@ -209,7 +210,7 @@ git add preferences.json
 
 # enable log rotation
 sudo cp $HOME/src/oref0/logrotate.openaps /etc/logrotate.d/openaps || die "Could not cp /etc/logrotate.d/openaps"
-sudo cp $HOME/src/oref0/logrotate.rsyslog /etc/logrotate.d/rsyslog || die "Could not cp /etc/logrotate.d/rsyslog"
+#sudo cp $HOME/src/oref0/logrotate.rsyslog /etc/logrotate.d/rsyslog || die "Could not cp /etc/logrotate.d/rsyslog"
 
 test -d /var/log/openaps || sudo mkdir /var/log/openaps && sudo chown $USER /var/log/openaps || die "Could not create /var/log/openaps"
 
@@ -347,4 +348,3 @@ crontab -l
 fi
 
 fi
-
