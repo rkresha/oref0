@@ -75,6 +75,12 @@ case $i in
 esac
 done
 
+# Prerequisites
+curl -s https://raw.githubusercontent.com/openaps/docs/master/scripts/quick-packages.sh | bash -
+sudo apt-get update && sudo apt-get -y --with-new-pkgs upgrade
+sudo apt-get autoremove
+
+# Main 
 if ! [[ ${CGM,,} =~ "g4" || ${CGM,,} =~ "g5" || ${CGM,,} =~ "mdt" || ${CGM,,} =~ "shareble" ]]; then
     echo "Unsupported CGM.  Please select (Dexcom) G4 (default), shareble, G5, or MDT."
     echo "If you'd like to help add Medtronic CGM support, please contact @scottleibrand on Gitter"
