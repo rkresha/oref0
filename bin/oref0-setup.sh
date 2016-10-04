@@ -196,7 +196,7 @@ if [ -d "$HOME/src/oref0/" ]; then
     (cd ~/src/oref0 && git fetch && git pull) || die "Couldn't pull latest oref0"
 else
     echo -n "Cloning oref0 dev: "
-    (cd ~/src && git clone -b dev_testing git://github.com/rkresha/oref0.git) || die "Couldn't clone oref0 dev"
+    (cd ~/src && git clone -b dev_mod git://github.com/rkresha/oref0.git) || die "Couldn't clone oref0 dev"
 fi
 echo Checking oref0 installation
 ( grep -q oref0_glucose_since $(which nightscout) && oref0-get-profile --exportDefaults 2>/dev/null >/dev/null ) && (echo Installing latest oref0 dev && cd $HOME/src/oref0/ && npm run global-install)
