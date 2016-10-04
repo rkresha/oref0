@@ -31,7 +31,7 @@
     "type": "alias",
     "name": "monitor-cgm",
     "monitor-cgm": {
-      "command": "! bash -c \"(openaps report invoke raw-cgm/raw-entries.json cgm/cgm-glucose.json || openaps get-ns-bg) || echo Unable to get BG, loop will fail until fixed); exit 1 \""
+      "command": "! bash -c \"(openaps report invoke raw-cgm/raw-entries.json cgm/cgm-glucose.json || openaps get-ns-bg) || echo Unable to get BG, loop will fail until fixed; exit 1 \""
     }
   },
   {
