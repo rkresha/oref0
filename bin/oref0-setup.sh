@@ -195,7 +195,7 @@ if [ -d "$HOME/src/oref0/" ]; then
     echo "$HOME/src/oref0/ already exists; pulling latest"
     (cd ~/src/oref0 && git fetch && git pull) || die "Couldn't pull latest oref0"
 else
-    echo -n "Cloning oref0 dev: "
+    echo -n "Cloning rkresha/oref0 dev_mod: "
     (cd ~/src && git clone -b dev_mod git://github.com/rkresha/oref0.git) || die "Couldn't clone oref0 dev"
 fi
 echo Checking oref0 installation
