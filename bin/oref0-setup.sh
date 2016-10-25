@@ -109,7 +109,7 @@ if [[ -z "$DIR" || -z "$serial" ]]; then
     if [[ -z $DIR ]]; then DIR="myopenaps"; fi
     echo "Ok, $DIR it is."
     directory="$(readlink -m $DIR)"
-    read -p "What is your pump serial number? " -r
+    read -p "What is your pump serial number (numbers only)? " -r
     serial=$REPLY
     echo "Ok, $serial it is."
     read -p "What kind of CGM are you using? (i.e. G4, shareble, G5, MDT) " -r
@@ -383,7 +383,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 (crontab -l; crontab -l | grep -q "PATH=" || echo "PATH=$PATH" ) | crontab -
 if [[ ${CGM,,} =~ "shareble" ]]; then
     # cross-platform hack to make sure experimental bluetoothd is running for openxshareble
-    (crontab -l; crontab -l | grep -q "killall bluetoothd" || echo '@reboot sleep 30; sudo killall bluetoothd; sudo /usr/local/bin/bluetoothd --experimental') | crontab -
+    (crontab -l; crontab -l | grep -q "killall bluetoothd" || echo '@reboot sleep 30; sudo killall bluetoothd; sudo /usr/local/bin/bluetoothd --experimental; bluetooth_rfkill_event > /dev/null 2>&1') | crontab -
 fi
 (crontab -l; crontab -l | grep -q "sudo wpa_cli scan" || echo '* * * * * sudo wpa_cli scan') | crontab -
 (crontab -l; crontab -l | grep -q "killall -g --older-than" || echo '* * * * * killall -g --older-than 15m openaps') | crontab -
