@@ -10,7 +10,7 @@
     "type": "alias",
     "name": "mmtune",
     "mmtune": {
-      "command": "! bash -c \"reset_spi_serial.py 2>/dev/null; echo {} > monitor/mmtune.json; echo -n \\\"mmtune: \\\" && openaps report invoke monitor/mmtune.json 2>/dev/null >/dev/null; grep -v setFreq monitor/mmtune.json | grep -A2 $(json -a setFreq -f monitor/mmtune.json) | while read line; do echo -n \\\"$line \\\"; done\""
+      "command": "! bash -c \"reset_spi_serial.py 2>/dev/null; printf \"{}\n\" > monitor/mmtune.json; printf \\\"mmtune: \\\" && openaps report invoke monitor/mmtune.json 2>/dev/null >/dev/null; grep -v setFreq monitor/mmtune.json | grep -A2 $(json -a setFreq -f monitor/mmtune.json) | while read line; do printf \\\"$line \\\"; done\""
     }
   },
   {
@@ -31,7 +31,7 @@
     "type": "alias",
     "name": "monitor-cgm",
     "monitor-cgm": {
-      "command": "! bash -c \"(openaps report invoke raw-cgm/raw-entries.json cgm/cgm-glucose.json || openaps get-ns-bg) || echo Unable to get BG, loop will fail until fixed; exit 1 \""
+      "command": "! bash -c \"(openaps report invoke raw-cgm/raw-entries.json cgm/cgm-glucose.json || openaps get-ns-bg) || printf \"Unable to get BG, loop will fail until fixed\n\"; exit 1 \""
     }
   },
   {
@@ -92,7 +92,7 @@
   },
   {
     "gather": {
-      "command": "! bash -c \"openaps report invoke monitor/status.json 2>/dev/null >/dev/null && echo -n Ref && test $(cat monitor/status.json | json bolusing) == false && echo -n resh && ( openaps monitor-pump || openaps monitor-pump ) 2>/dev/null >/dev/null && echo ed pumphistory || (echo; exit 1) 2>/dev/null\""
+      "command": "! bash -c \"openaps report invoke monitor/status.json 2>/dev/null >/dev/null && printf \"Ref\" && test $(cat monitor/status.json | json bolusing) == false && printf \"resh\" && ( openaps monitor-pump || openaps monitor-pump ) 2>/dev/null >/dev/null && printf \"ed pumphistory\n\" || (printf \"\n\"; exit 1) 2>/dev/null\""
     },
     "type": "alias",
     "name": "gather"
@@ -108,19 +108,19 @@
     "type": "alias",
     "name": "refresh-old-pumphistory",
     "refresh-old-pumphistory": {
-      "command": "! bash -c \"find monitor/ -mmin -15 -size +100c | grep -q pumphistory-zoned || ( echo -n \\\"Old pumphistory: \\\" && openaps gather && openaps enact ) \""
+      "command": "! bash -c \"find monitor/ -mmin -15 -size +100c | grep -q pumphistory-zoned || ( printf \\\"Old pumphistory: \\\" && openaps gather && openaps enact ) \""
     }
   },
   {
     "refresh-old-pumphistory-24h": {
-      "command": "! bash -c \"find settings/ -mmin -120 -size +100c | grep -q pumphistory-24h-zoned || (echo -n Old pumphistory-24h refresh && openaps report invoke settings/pumphistory-24h.json settings/pumphistory-24h-zoned.json 2>/dev/null >/dev/null && echo ed)\""
+      "command": "! bash -c \"find settings/ -mmin -120 -size +100c | grep -q pumphistory-24h-zoned || (printf \"Old pumphistory-24h refresh\" && openaps report invoke settings/pumphistory-24h.json settings/pumphistory-24h-zoned.json 2>/dev/null >/dev/null && printf \"ed\n\")\""
     },
     "type": "alias",
     "name": "refresh-old-pumphistory-24h"
   },
   {
     "refresh-temp-and-enact": {
-      "command": "! bash -c \"if( (find monitor/ -newer monitor/temp_basal.json | grep -q glucose.json && echo glucose.json newer than temp_basal.json ) || (! find monitor/ -mmin -5 -size +5c | grep -q temp_basal && echo temp_basal.json more than 5m old)); then (echo -n Temp refresh && openaps report invoke monitor/temp_basal.json monitor/clock.json monitor/clock-zoned.json monitor/iob.json 2>/dev/null >/dev/null && echo ed && if(cat monitor/temp_basal.json | json -c \\\"this.duration < 27\\\" | grep -q duration); then openaps enact; else echo Temp duration 27m or more; fi); else echo temp_basal.json less than 5m old; fi\""
+      "command": "! bash -c \"if( (find monitor/ -newer monitor/temp_basal.json | grep -q glucose.json && printf \"glucose.json newer than temp_basal.json\n\") || (! find monitor/ -mmin -5 -size +5c | grep -q temp_basal && printf \"temp_basal.json more than 5m old\n\")); then (printf \"Temp refresh\" && openaps report invoke monitor/temp_basal.json monitor/clock.json monitor/clock-zoned.json monitor/iob.json 2>/dev/null >/dev/null && printf \"ed\n\" && if(cat monitor/temp_basal.json | json -c \\\"this.duration < 27\\\" | grep -q duration); then openaps enact; else printf \"Temp duration 27m or more\n\"; fi); else printf \"temp_basal.json less than 5m old\n\"; fi\""
     },
     "type": "alias",
     "name": "refresh-temp-and-enact"
@@ -129,26 +129,26 @@
     "type": "alias",
     "name": "refresh-pumphistory-and-enact",
     "refresh-pumphistory-and-enact": {
-      "command": "! bash -c \"if ((find monitor/ -newer monitor/pumphistory-zoned.json | grep -q glucose.json && echo -n glucose.json newer than pumphistory) || (find enact/ -newer monitor/pumphistory-zoned.json | grep -q enacted.json && echo -n enacted.json newer than pumphistory) || (! find monitor/ -mmin -5 | grep -q pumphistory-zoned && echo -n pumphistory more than 5m old) ); then (echo -n \\\": \\\" && openaps gather && openaps enact ); else echo Pumphistory less than 5m old; fi \""
+      "command": "! bash -c \"if ((find monitor/ -newer monitor/pumphistory-zoned.json | grep -q glucose.json && printf \"glucose.json newer than pumphistory\") || (find enact/ -newer monitor/pumphistory-zoned.json | grep -q enacted.json && printf \"enacted.json newer than pumphistory\") || (! find monitor/ -mmin -5 | grep -q pumphistory-zoned && printf \"pumphistory more than 5m old\") ); then (printf \\\": \\\" && openaps gather && openaps enact ); else printf \"Pumphistory less than 5m old\n\"; fi \""
     }
   },
   {
     "refresh-old-profile": {
-      "command": "! bash -c \"find settings/ -mmin -60 -size +5c | grep -q settings/profile.json && echo Profile less than 60m old || (echo -n Old settings refresh && openaps get-settings 2>/dev/null >/dev/null && echo ed )\""
+      "command": "! bash -c \"find settings/ -mmin -60 -size +5c | grep -q settings/profile.json && printf \"Profile less than 60m old\n\" || (printf \"Old settings refresh\" && openaps get-settings 2>/dev/null >/dev/null && printf \"ed\n\" )\""
     },
     "type": "alias",
     "name": "refresh-old-profile"
   },
   {
     "refresh-profile": {
-      "command": "! bash -c \"find settings/ -mmin -10 -size +5c | grep -q settings.json && echo Settings less than 10m old || (echo -n Settings refresh && openaps get-settings 2>/dev/null >/dev/null && echo ed)\""
+      "command": "! bash -c \"find settings/ -mmin -10 -size +5c | grep -q settings.json && printf \"Settings less than 10m old\n\" || (printf \"Settings refresh\" && openaps get-settings 2>/dev/null >/dev/null && printf \"ed\n\")\""
     },
     "type": "alias",
     "name": "refresh-profile"
   },
   {
     "refresh-pumphistory-24h": {
-      "command": "! bash -c \"find settings/ -mmin -20 -size +100c | grep -q pumphistory-24h-zoned && echo Pumphistory-24 less than 20m old || (echo -n pumphistory-24h refresh && openaps report invoke settings/pumphistory-24h.json settings/pumphistory-24h-zoned.json 2>/dev/null >/dev/null && echo ed)\""
+      "command": "! bash -c \"find settings/ -mmin -20 -size +100c | grep -q pumphistory-24h-zoned && printf \"Pumphistory-24 less than 20m old\n\" || (printf \"pumphistory-24h refresh\" && openaps report invoke settings/pumphistory-24h.json settings/pumphistory-24h-zoned.json 2>/dev/null >/dev/null && printf \"ed\n\")\""
     },
     "type": "alias",
     "name": "refresh-pumphistory-24h"
@@ -171,12 +171,12 @@
     "type": "alias",
     "name": "ns-loop",
     "ns-loop": {
-      "command": "! bash -c \"echo Starting ns-loop at $(date): && openaps ns-temptargets && echo -n Refreshed temptargets && openaps ns-meal-carbs && echo \\\" and meal-carbs\\\" && openaps upload\""
+      "command": "! bash -c \"printf \"Starting ns-loop at $(date):\n\" && openaps ns-temptargets && printf \"Refreshed temptargets\" && openaps ns-meal-carbs && printf \\\" and meal-carbs\\\n\\\" && openaps upload\""
     }
   },
   {
     "pump-loop": {
-      "command": "! bash -c \"sleep $[ ( $RANDOM / 2048 ) ]s; until(echo Starting pump-loop at $(date): && openaps wait-for-silence && openaps refresh-old-pumphistory && openaps refresh-old-pumphistory-24h && openaps refresh-old-profile && openaps refresh-temp-and-enact && openaps refresh-pumphistory-and-enact && openaps refresh-profile && openaps refresh-pumphistory-24h && echo Completed pump-loop at $(date) && echo); do echo Error, retrying && [[ $RANDOM > 28000 ]] && openaps wait-for-long-silence && openaps mmtune; sleep 5; done\""
+      "command": "! bash -c \"sleep $[ ( $RANDOM / 2048 ) ]s; until(printf \"\nStarting pump-loop at $(date):\n\" && openaps wait-for-silence && openaps refresh-old-pumphistory && openaps refresh-old-pumphistory-24h && openaps refresh-old-profile && openaps refresh-temp-and-enact && openaps refresh-pumphistory-and-enact && openaps refresh-profile && openaps refresh-pumphistory-24h && printf \"Completed pump-loop at $(date)\n\n\"); do printf \"Error, retrying\n\" && [[ $RANDOM > 28000 ]] && openaps wait-for-long-silence && openaps mmtune; sleep 5; done\""
     },
     "type": "alias",
     "name": "pump-loop"
@@ -220,7 +220,7 @@
     "type": "alias",
     "name": "upload-recent-treatments",
     "upload-recent-treatments": {
-      "command": "! bash -c \"openaps format-latest-nightscout-treatments && test $(json -f upload/latest-treatments.json -a created_at eventType | wc -l ) -gt 0 && (ns-upload $NIGHTSCOUT_HOST $API_SECRET treatments.json upload/latest-treatments.json ) || echo \\\"No recent treatments to upload\\\"\""
+      "command": "! bash -c \"openaps format-latest-nightscout-treatments && test $(json -f upload/latest-treatments.json -a created_at eventType | wc -l ) -gt 0 && (ns-upload $NIGHTSCOUT_HOST $API_SECRET treatments.json upload/latest-treatments.json ) || printf \\\"No recent treatments to upload\\\n\\\"\""
     }
   },
   {
@@ -241,7 +241,7 @@
     "type": "alias",
     "name": "upload",
     "upload": {
-      "command": "! bash -c \"echo -n Upload && ( openaps upload-ns-status; openaps upload-pumphistory-entries; openaps upload-recent-treatments ) 2>/dev/null >/dev/null && echo ed\""
+      "command": "! bash -c \"printf \"Upload\" && ( openaps upload-ns-status; openaps upload-pumphistory-entries; openaps upload-recent-treatments ) 2>/dev/null >/dev/null && printf \"ed\n\"\""
     }
   }
 ]
