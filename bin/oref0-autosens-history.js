@@ -16,7 +16,6 @@
 */
 
 var basal = require('../lib/profile/basal');
-var get_iob = require('../lib/iob');
 var detect = require('../lib/determine-basal/autosens');
 
 if (!module.parent) {
@@ -40,7 +39,7 @@ if (!module.parent) {
     var profile_input = inputs[2];
     var readings_per_run = inputs[3];
     var output_file;
-    if (inputs.length == 5) {
+    if (inputs.length === 5) {
         output_file = inputs[4];
     }
 
@@ -59,7 +58,7 @@ if (!module.parent) {
         var profile = require(cwd + '/' + profile_input);
 
 
-        if (typeof(profile.isfProfile == "undefined")) {
+        if (typeof profile.isfProfile === "undefined") {
             for (prop in profile[0].store) {
                 profilename = prop;
             }
@@ -95,12 +94,12 @@ if (!module.parent) {
           //console.error(profile);
         }
         var isf_data = profile.isfProfile;
-        if (typeof(isf_data) != "undefined" && typeof(isf_data.units == "string")) {
+        if (typeof isf_data !== "undefined" && typeof isf_data.units === "string") {
             if (isf_data.units !== 'mg/dL') {
-                if (isf_data.units == 'mg/dl') {
+                if (isf_data.units === 'mg/dl') {
                     isf_data.units = 'mg/dL';
                     profile.isfProfile.units = 'mg/dL';
-                } else if (isf_data.units == 'mmol' || isf_data.units == 'mmol/L') {
+                } else if (isf_data.units === 'mmol' || isf_data.units === 'mmol/L') {
                     for (var i = 0, len = isf_data.sensitivities.length; i < len; i++) {
                         isf_data.sensitivities[i].sensitivity = isf_data.sensitivities[i].sensitivity * 18;
                         profile.sens = profile.sens * 18;
@@ -137,7 +136,7 @@ if (!module.parent) {
     do {
         detection_inputs.deviations = 96;
         detect(detection_inputs);
-        for(var i=0; i<readings_per_run; i++) {
+        for(i=0; i<readings_per_run; i++) {
             detection_inputs.glucose_data.shift();
         }
         console.error(ratio, newisf, detection_inputs.glucose_data[0].dateString);
