@@ -27,6 +27,9 @@ main() {
                 sudo dhclient wlan0
             fi
         fi
+    else
+      echo Attempting to cycle wlan0 just in case
+      ifdown wlan0; ifup wlan0 # Cycling wlan0 because it might be being a pain
     fi
     if ifconfig | egrep -q "wlan0" >/dev/null; then
     #if [[ $(ip -4 -o addr show dev wlan0 | awk '{split($4,a,"/");print a[1]}') = $(print_local_ip wlan0) ]]; then
